@@ -6,12 +6,17 @@
 #include <iomanip>
 
 #include "Utils.h"
+#include <regex>
+
+const std::regex illegalPathChars("[*?\"<>|]");
+const std::regex illegalReplayChars("[\\\\/:*?\"<>|]");
+const std::regex illegalNameChars("[\\\\/:*?\"<>|]");
+
 
 bool SanitizeReplayNameTemplate(shared_ptr<string> replayNameTemplate, string defaultValue)
 {
 	// Remove illegal characters for filename
-	vector<char> illegalChars{ '\\', '/', ':', '*', '?', '\"', '<', '>', '|' };
-	bool changed = RemoveChars(replayNameTemplate, illegalChars, false);
+	bool changed = RemoveChars(replayNameTemplate, illegalReplayChars);
 
 	// If empty use default
 	if (replayNameTemplate->empty())
@@ -21,6 +26,20 @@ bool SanitizeReplayNameTemplate(shared_ptr<string> replayNameTemplate, string de
 	}
 
 	return changed;
+}
+
+string SanitizePlayerName(string playerName, string defaultValue)
+{
+	// Remove illegal characters for filename
+	RemoveChars(playerName, illegalNameChars);
+
+	// If empty use default
+	if (playerName.empty())
+	{
+		playerName = defaultValue;
+	}
+
+	return playerName;
 }
 
 string ApplyNameTemplate(string& nameTemplate, Match& match, int* matchIndex)
@@ -48,9 +67,11 @@ string ApplyNameTemplate(string& nameTemplate, Match& match, int* matchIndex)
 	auto winloss = won ? string("Win") : string("Loss");
 	auto wl = won ? string("W") : string("L");
 
+	string playerName = SanitizePlayerName(match.PrimaryPlayer.Name, "Player");
+
 	string name = nameTemplate;
 	ReplaceAll(name, "{MODE}", match.GameMode);
-	ReplaceAll(name, "{PLAYER}", match.PrimaryPlayer.Name);
+	ReplaceAll(name, "{PLAYER}", playerName);
 	ReplaceAll(name, "{UNIQUEID}", to_string(match.PrimaryPlayer.UniqueId));
 	ReplaceAll(name, "{WINLOSS}", winloss);
 	ReplaceAll(name, "{WL}", wl);
@@ -78,8 +99,7 @@ bool SanitizeExportPath(shared_ptr<string> exportPath, string defaultValue)
 	}
 
 	// Remove illegal characters for folder path
-	vector<char> illegalChars{ '*', '?', '\"', '<', '>', '|' };
-	bool changed = RemoveChars(exportPath, illegalChars, false);
+	bool changed = RemoveChars(exportPath, illegalPathChars);
 	if (exportPath->empty()) { *exportPath = defaultValue;  return true; }
 
 	// Replaces \ with /

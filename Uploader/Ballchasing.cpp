@@ -21,9 +21,13 @@ void BallchasingRequestComplete(PostFileRequest* ctx)
 	if (ctx->RequestId == 1)
 	{
 		ballchasing->Log(ballchasing->Client, "Ballchasing::UploadCompleted with status: " + to_string(ctx->Status));
-		if (ctx->message.size() > 0)
+		if (ctx->Message.size() > 0)
 		{
-			ballchasing->Log(ballchasing->Client, ctx->message);
+			ballchasing->Log(ballchasing->Client, ctx->Message);
+		}
+		if (ctx->ResponseBody.size() > 0)
+		{
+			ballchasing->Log(ballchasing->Client, ctx->ResponseBody);
 		}
 		ballchasing->NotifyUploadResult(ballchasing->Client, (ctx->Status >= 200 && ctx->Status < 300));
 
@@ -46,22 +50,25 @@ void BallchasingRequestComplete(GetRequest* ctx)
 	}
 }
 
-void Ballchasing::UploadReplay(string replayPath, string replayFileName)
+void Ballchasing::UploadReplay(string replayPath)
 {
-	if (UserAgent.empty() || authKey->empty() || visibility->empty() || replayPath.empty() || replayFileName.empty())
+	if (UserAgent.empty() || authKey->empty() || visibility->empty() || replayPath.empty())
 	{
 		Log(Client, "Ballchasing::UploadReplay Parameters were empty.");
 		Log(Client, "UserAgent: " + UserAgent);
 		Log(Client, "ReplayPath: " + replayPath);
 		Log(Client, "AuthKey: " + *authKey);
 		Log(Client, "Visibility: " + *visibility);
-		Log(Client, "ReplayFileName: " + replayFileName);
 		return;
 	}
 
-	string destPath = "./bakkesmod/data/ballchasing/" + replayFileName + ".replay";
+	string destPath = "./bakkesmod/data/ballchasing/temp.replay";
 	CreateDirectory("./bakkesmod/data/ballchasing", NULL);
-	CopyFile(replayPath.c_str(), destPath.c_str(), FALSE);
+	bool resultOfCopy = CopyFile(replayPath.c_str(), destPath.c_str(), FALSE);
+
+	Log(Client, "ReplayPath: " + replayPath);
+	Log(Client, "DestPath: " + destPath);
+	Log(Client, "File copy success: " + std::string(resultOfCopy ? "true" : "false"));
 
 	PostFileRequest *request = new PostFileRequest();
 	request->Url = AppendGetParams("https://ballchasing.com/api/v2/upload", { {"visibility", *visibility} });
@@ -72,7 +79,7 @@ void Ballchasing::UploadReplay(string replayPath, string replayFileName)
 	request->RequestComplete = &BallchasingRequestComplete;
 	request->RequestId = 1;
 	request->Requester = this;
-	request->message = "";
+	request->Message = "";
 
 	PostFileAsync(request);
 }
